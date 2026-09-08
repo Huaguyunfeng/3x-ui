@@ -79,6 +79,38 @@ surface — still pre-existing, but open the summary with it.
   (never testify), the panel is Ant Design (never Tailwind or shadcn). Neither
   golangci-lint nor oxlint forbids the import, so it passes CI clean.
 
+## Try to break it
+
+The question behind every finding is how this change fails in production, so
+read the changed code under the conditions this panel actually meets rather
+than the happy path the author had in mind:
+
+- **An upgrade over an operator's existing database.** Rows written before
+  this change: a column added with its zero value, a field the old writer
+  never set, a settings blob in the older shape. And the way back, because
+  there are no down-migrations — an operator who rolls the binary back reads
+  the same rows.
+- **A restart.** Anything held only in memory is gone when the panel or the
+  Xray child restarts, and the cron jobs in `internal/web/job/` then fire
+  against whatever survived.
+- **A second actor at the same instant.** Two panel requests, a request racing
+  a cron job, or a sub-node syncing while the master writes. Read-modify-write
+  on the same row is where this surfaces.
+- **The same operation twice.** A retried request, a re-sent sync, a job that
+  ran late and then again on schedule. Traffic and quota resets and Xray API
+  calls have to survive being applied a second time.
+- **Absent, empty and extreme input.** An inbound with no clients, a client
+  with no traffic, an expired or disabled one, a nil settings blob — and the
+  other end, the operator with thousands of clients whose loop or query this
+  change sits inside.
+- **A dependency that is down.** The Xray gRPC API refusing a call, the
+  mtg-multi management API unreachable, a sub-node offline, PIA or LDAP
+  timing out. What the caller sees, and what state is left behind.
+
+Running a case is not reporting it. Each one still has to clear the
+verification bar below — the code path that mishandles it, cited — and a case
+the code already handles is not a finding at all.
+
 ## Do not report
 
 - Anything CI already enforces: golangci-lint and gofumpt, oxlint, format

@@ -1,4 +1,4 @@
-# Repository context for the Claude bot
+# Repository context for the issue analyst
 
 Briefing for the issue analyst in `.github/workflows/claude-issue-analyst.yml`.
 It exists so these facts live in ONE place next to the code instead of being

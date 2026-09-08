@@ -1044,7 +1044,7 @@ func (s *InboundService) AddInbound(inbound *model.Inbound) (*model.Inbound, boo
 	if err := s.normalizeMtprotoXrayPort(inbound, ""); err != nil {
 		return inbound, false, err
 	}
-	if err := s.normalizeAmneziaWGSettings(inbound); err != nil {
+	if err := s.normalizeAmneziaWGSettings(inbound, ""); err != nil {
 		return inbound, false, err
 	}
 	if inbound.NodeID != nil && !isNodeEligibleProtocol(inbound.Protocol) {
@@ -1565,7 +1565,12 @@ func (s *InboundService) UpdateInbound(inbound *model.Inbound) (*model.Inbound, 
 		return inbound, false, err
 	}
 	s.normalizeMtprotoSecret(inbound)
-	if err := s.normalizeAmneziaWGSettings(inbound); err != nil {
+
+	oldInbound, err := s.GetInbound(inbound.Id)
+	if err != nil {
+		return inbound, false, err
+	}
+	if err := s.normalizeAmneziaWGSettings(inbound, oldInbound.Settings); err != nil {
 		return inbound, false, err
 	}
 	inbound.SubSortIndex = normalizeSubSortIndex(inbound.SubSortIndex)
@@ -1580,11 +1585,6 @@ func (s *InboundService) UpdateInbound(inbound *model.Inbound) (*model.Inbound, 
 				return inbound, false, common.NewError("empty client ID")
 			}
 		}
-	}
-
-	oldInbound, err := s.GetInbound(inbound.Id)
-	if err != nil {
-		return inbound, false, err
 	}
 	// Grandfather a row that was already stored incomplete so it stays editable;
 	// only a save that breaks a previously valid TLS block is refused.

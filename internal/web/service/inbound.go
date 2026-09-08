@@ -1598,7 +1598,9 @@ func (s *InboundService) UpdateInbound(inbound *model.Inbound) (*model.Inbound, 
 	// Restore the stored NodeID before the port-conflict check so a node inbound
 	// stays scoped to its own node (the payload's nodeId is unreliable, often absent).
 	inbound.NodeID = oldInbound.NodeID
-	if inbound.NodeID != nil && !isNodeEligibleProtocol(inbound.Protocol) {
+	// The node assignment is the stored one, so only a protocol change can
+	// introduce one; a row adopted from a node keeps the protocol it arrived with.
+	if inbound.NodeID != nil && inbound.Protocol != oldInbound.Protocol && !isNodeEligibleProtocol(inbound.Protocol) {
 		return inbound, false, common.NewErrorf("%s inbounds cannot be assigned to a node", inbound.Protocol)
 	}
 
